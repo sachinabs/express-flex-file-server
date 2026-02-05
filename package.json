@@ -1,6 +1,6 @@
 {
   "name": "express-flex-file-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Config-driven file upload, validation, streaming, and folder analytics server for Express",
   "type": "module",
   "main": "src/index.js",

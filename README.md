@@ -1,31 +1,26 @@
 # express-flex-file-server
 
-A **config-driven file upload & streaming server for Express** with:
+`express-flex-file-server` is a **config-driven file upload and streaming middleware for Express**.
 
-* strict file validation
-* automatic folder routing
-* safe file renaming
-* audio / video streaming (chunked)
-* configurable chunk size
-* folder size & file stats
-* Node 18+ / Node 25 compatible
+It provides deterministic file handling with strict validation, predictable storage layout, and controlled media streaming.
+Designed for backend systems that need **clarity, control, and safety**, not magic.
 
 ---
 
-## ✨ Features
+## Core Capabilities
 
-* Upload files using `multipart/form-data`
-* Route files into folders based on extension
-* Reject unwanted file types safely
-* Rename files with unique prefixes
-* Stream large video/audio files using HTTP range
-* Control **how much data is sent per chunk**
-* View files without URL encoding issues
-* Get folder-level usage statistics
+* Multipart file upload (`multipart/form-data`)
+* Explicit allow-list for file extensions
+* Automatic folder routing based on extension
+* Deterministic file renaming
+* Chunked audio/video streaming using HTTP Range
+* Configurable streaming chunk size
+* Folder-level storage statistics
+* Compatible with Node.js 18+ (tested on Node 25)
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install express-flex-file-server
@@ -33,7 +28,7 @@ npm install express-flex-file-server
 
 ---
 
-## 🚀 Quick Start
+## Minimal Usage
 
 ```js
 import express from "express";
@@ -56,31 +51,31 @@ createFileServer(app, {
   }
 });
 
-app.listen(3000, () => {
-  console.log("🚀 Server running on http://localhost:3000");
-});
+app.listen(3000);
 ```
 
 ---
 
-## ⚙️ Configuration Options
+## Configuration
 
 ### `uploadRoot`
 
-Root directory where files are stored.
+Filesystem root where all uploads are stored.
 
 ```js
 uploadRoot: "uploads"
 ```
 
+The directory is created automatically if it does not exist.
+
 ---
 
-### `requiredDirs` (IMPORTANT)
+### `requiredDirs` (mandatory)
 
 Defines:
 
-* allowed file extensions
-* folder where each type is stored
+* which file extensions are allowed
+* which folder each extension maps to
 
 ```js
 requiredDirs: {
@@ -90,21 +85,31 @@ requiredDirs: {
 }
 ```
 
-❌ Uploading a file **not listed here will be rejected**.
+**Behavior**
+
+* Any file extension not listed here is rejected
+* Folder existence does not override this rule
+* This is the single source of truth for file validation
 
 ---
 
 ### `rename`
 
-Controls how uploaded files are renamed.
+Controls how files are renamed at upload time.
 
 ```js
 rename: {
-  prefix: "id" // id | uuid | timestamp
+  prefix: "id" // "id" | "uuid" | "timestamp"
 }
 ```
 
-**Example result**
+Resulting filename format:
+
+```
+<generated-prefix>-original-<original-filename>
+```
+
+Example:
 
 ```
 01c40f70bdfd-original-photo.png
@@ -114,7 +119,7 @@ rename: {
 
 ### `streaming`
 
-Controls audio/video streaming behavior.
+Controls media streaming behavior.
 
 ```js
 streaming: {
@@ -123,114 +128,136 @@ streaming: {
 }
 ```
 
-| Option        | Description                |
-| ------------- | -------------------------- |
-| `enabled`     | Enable streaming           |
-| `chunkSizeMB` | Max bytes sent per request |
+| Field         | Description                         |
+| ------------- | ----------------------------------- |
+| `enabled`     | Enables HTTP Range streaming        |
+| `chunkSizeMB` | Maximum bytes returned per response |
 
-> Chunk size applies to **every HTTP range request**
-> This enables real streaming behavior.
+**Notes**
+
+* Streaming always uses `206 Partial Content`
+* Chunk size is enforced server-side
+* Browser controls request frequency; server controls response size
 
 ---
 
-## 📤 Upload API
+## API Reference
 
-### Endpoint
+### Upload File
+
+**Endpoint**
 
 ```
 POST /file/upload
 ```
 
-### Body
+**Request**
 
-`multipart/form-data`
+* `multipart/form-data`
+* Field name: `file`
 
-| Key    | Type |
-| ------ | ---- |
-| `file` | File |
+**Example**
 
----
+```bash
+curl -F "file=@example.png" http://localhost:3000/file/upload
+```
 
-### Response
+**Response**
 
 ```json
 {
-  "originalName": "photo.png",
-  "storedName": "01c40f70bdfd-original-photo.png",
-  "path": "uploads/png/01c40f70bdfd-original-photo.png",
+  "originalName": "example.png",
+  "storedName": "01c40f70bdfd-original-example.png",
+  "path": "uploads/png/01c40f70bdfd-original-example.png",
   "size": 21759,
   "mimetype": "image/png",
-  "viewUrl": "/file/view/01c40f70bdfd-original-photo.png"
+  "viewUrl": "/file/view/01c40f70bdfd-original-example.png"
 }
 ```
 
-✔ Ready to store in database
-✔ Can be uploaded to S3
-✔ `viewUrl` can be used directly in frontend
+**Intended usage**
+
+* `storedName`: persist in database
+* `path`: optional cloud upload (S3, etc.)
+* `viewUrl`: direct consumption by frontend
 
 ---
 
-## 👁️ View / Stream API
+### View / Stream File
 
-### Endpoint
-
-```
-GET /file/view/<filename>
-```
-
-### Example
+**Endpoint**
 
 ```
-http://localhost:3000/file/view/01c40f70bdfd-original-photo.png
+GET /file/view/<storedName>
 ```
 
-✔ No URL encoding required
-✔ Works with spaces & special characters
-✔ Streams large files using HTTP 206
+**Example**
+
+```
+http://localhost:3000/file/view/01c40f70bdfd-original-example.png
+```
+
+**Behavior**
+
+* Supports filenames with spaces and special characters
+* Uses prefix routing (not param parsing)
+* Streams large files using HTTP Range
+* No URL encoding required on the client
 
 ---
 
-### 🎥 Video Example
+### Video Example
 
 ```html
 <video controls width="720">
-  <source src="http://localhost:3000/file/view/video-file.mp4" type="video/mp4">
+  <source
+    src="http://localhost:3000/file/view/video-file.mp4"
+    type="video/mp4"
+  />
 </video>
 ```
 
 ---
 
-## 📊 Folder Stats API
+### Folder Statistics
 
-### Endpoint
+**Endpoint**
 
 ```
 GET /file/stats
 ```
 
-### Response
+**Response**
 
 ```json
 {
   "totalSizeMB": 12.8,
   "folders": {
-    "png": { "files": 3, "sizeMB": 1.2 },
-    "video": { "files": 1, "sizeMB": 11.4 }
+    "png": {
+      "files": 3,
+      "sizeMB": 1.2
+    },
+    "video": {
+      "files": 1,
+      "sizeMB": 11.4
+    }
   }
 }
 ```
 
-Useful for:
+**Typical use cases**
 
-* dashboards
-* storage limits
-* cleanup jobs
+* Storage dashboards
+* Quota enforcement
+* Cleanup or archival jobs
 
 ---
 
-## ❌ Error Handling
+## Error Model
 
-### Invalid file type
+All errors are returned as JSON.
+
+### Invalid File Type
 
 ```json
 {
@@ -239,7 +266,7 @@ Useful for:
 }
 ```
 
-### File not found
+### File Not Found
 
 ```json
 {
@@ -248,71 +275,76 @@ Useful for:
 }
 ```
 
-Errors are always returned as **clean JSON**.
+No HTML errors or stack traces are exposed.
 
 ---
 
-## 🧪 Testing
+## Testing
 
-Uses **Node.js built-in test runner**.
+Uses the **Node.js built-in test runner**.
 
 ```bash
 npm test
 ```
 
-Includes tests for:
+Tests cover:
 
-* uploads
-* validation
-* streaming
-* stats API
-
----
-
-## 🛡️ Security Notes
-
-* Only extensions defined in `requiredDirs` are allowed
-* No file system paths are exposed
-* Files are streamed, not fully loaded into memory
-* Safe for large files
+* valid uploads
+* invalid uploads
+* streaming behavior
+* chunk enforcement
+* folder statistics
 
 ---
 
-## 🧠 Design Philosophy
+## Security Characteristics
 
-* **Config is the source of truth**
-* No magic folders
-* No implicit behavior
-* Frontend-friendly
-* CDN-style streaming
-
----
-
-## 📌 Node Compatibility
-
-* Node.js **18+**
-* Tested on **Node 25**
-* Express 4+
+* Strict extension allow-list
+* No implicit directory access
+* No full-file buffering in memory
+* Safe for large media files
+* Deterministic filesystem behavior
 
 ---
 
-## 🔮 Roadmap
+## Design Principles
+
+* Configuration is explicit and authoritative
+* No inference from filesystem state
+* No hidden conventions
+* Backend-first design
+* CDN-style streaming model
+
+---
+
+## Compatibility
+
+* Node.js 18+
+* Tested on Node.js 25
+* Express 4.x
+
+---
+
+## Roadmap
 
 * MIME + extension cross-validation
 * Filename sanitization
 * Download endpoint
-* S3 auto-upload support
+* S3 auto-upload hooks
 * Signed URLs
-* TypeScript typings
+* TypeScript definitions
 
 ---
 
-## 📄 License
+## License
 
 MIT
 
 ---
 
-## 🙌 Author
+## Author
 
-Built with care for real-world backend use.
+**Anish Bala Sachin**
+GitHub: [https://github.com/sachinabs](https://github.com/sachinabs)
+LinkedIn: [https://www.linkedin.com/in/anish-bala-sachin/](https://www.linkedin.com/in/anish-bala-sachin/)
+
