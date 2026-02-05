@@ -1,6 +1,6 @@
 {
   "name": "express-flex-file-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Config-driven file upload, validation, streaming, and folder analytics server for Express",
   "type": "module",
   "main": "src/index.js",
@@ -21,16 +21,16 @@
     "upload-validation",
     "s3-ready"
   ],
-  "author": "Your Name <your@email.com>",
+  "author": "Anish Bala Sachin <sachinabs.js@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/express-flex-file-server.git"
+    "url": "https://github.com/sachinabs/express-flex-file-server.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/express-flex-file-server/issues"
+    "url": "https://github.com/sachinabs/express-flex-file-server/issues"
   },
-  "homepage": "https://github.com/your-username/express-flex-file-server#readme",
+  "homepage": "https://github.com/sachinabs/express-flex-file-server",
   "engines": {
     "node": ">=18"
   },
